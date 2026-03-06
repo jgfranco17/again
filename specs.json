@@ -1,0 +1,7 @@
+{
+  "author": "Joaquin Franco",
+  "name": "again",
+  "description": "Again: Simple retry framework for Go",
+  "version": "0.0.1",
+  "repository": "https://github.com/jgfranco17/again"
+}
