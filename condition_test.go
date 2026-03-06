@@ -49,13 +49,17 @@ func TestIfErrorIs(t *testing.T) {
 	targetErr := errors.New("target error")
 	otherErr := errors.New("other error")
 	wrappedErr := errors.Join(targetErr, errors.New("additional"))
-
 	condition := IfErrorIs(targetErr)
 
-	assert.True(t, condition(targetErr))
-	assert.True(t, condition(wrappedErr))
-	assert.False(t, condition(otherErr))
-	assert.False(t, condition(nil))
+	t.Run("truthy condition", func(t *testing.T) {
+		assert.True(t, condition(targetErr))
+		assert.True(t, condition(wrappedErr))
+	})
+
+	t.Run("falsy condition", func(t *testing.T) {
+		assert.False(t, condition(otherErr))
+		assert.False(t, condition(nil))
+	})
 }
 
 func TestIfErrorAs(t *testing.T) {
@@ -114,8 +118,12 @@ func TestTransientErrors(t *testing.T) {
 			shouldRetry: true,
 		},
 		{
-			name:        "net.OpError",
-			err:         &net.OpError{Op: "dial", Net: "tcp", Err: errors.New("connection refused")},
+			name: "net.OpError",
+			err: &net.OpError{
+				Op:  "dial",
+				Net: "tcp",
+				Err: errors.New("connection refused"),
+			},
 			shouldRetry: true,
 		},
 		{
