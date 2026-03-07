@@ -2,6 +2,6 @@
   "author": "Joaquin Franco",
   "name": "again",
   "description": "A minimal, idiomatic retry framework for Go with context-aware execution and pluggable backoff/jitter strategies",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "repository": "https://github.com/jgfranco17/again"
 }
