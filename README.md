@@ -150,6 +150,80 @@ again.OnlyIf(func(err error) bool {
 })
 ```
 
+## RetryClient
+
+`RetryClient` is a reusable, stateful alternative to the package-level `Do` function —
+analologous to `http.Client` versus `http.Get`. Prefer it when you need shared
+configuration across multiple call sites, per-call overrides, or runtime statistics.
+
+### Creating a client
+
+```go
+client := again.NewRetryClient(again.Config{
+    Attempts: 5,
+    Backoff:  again.Exponential(100 * time.Millisecond),
+    Jitter:   again.FullJitter(),
+    RetryIf:  again.TransientErrors,
+})
+```
+
+### Executing operations
+
+```go
+err := client.Do(ctx, func() error {
+    return callService()
+})
+```
+
+### Deriving specialised clients
+
+`With*` methods return a **new** client with the override applied — the receiver
+is never mutated, so a package-level default is safe to share and derive from.
+
+```go
+// Application-wide default
+var defaultClient = again.NewRetryClient(again.Config{
+    Attempts: 3,
+    Backoff:  again.Exponential(100 * time.Millisecond),
+    RetryIf:  again.TransientErrors,
+})
+
+// Critical path — more attempts, additional error types
+criticalClient := defaultClient.
+    WithAttempts(6).
+    WithRetryIf(again.AnyOf(again.TransientErrors, again.IfErrorIs(ErrRateLimit))).
+    WithOnRetry(func(attempt int, err error) {
+        log.Printf("critical retry %d: %v", attempt, err)
+    })
+```
+
+Available builder methods: `WithAttempts`, `WithBackoff`, `WithJitter`, `WithRetryIf`, `WithOnRetry`.
+
+### Value-returning operations
+
+Go methods cannot carry additional type parameters, so use `Config()` to pass the
+client's configuration to the package-level `DoWithValue`:
+
+```go
+result, err := again.DoWithValue(ctx, client.Config(), func() (MyType, error) {
+    return fetchData()
+})
+```
+
+### Execution statistics
+
+The client accumulates statistics across every `Do` call. Use them for logging,
+metrics emission, or circuit-breaking logic:
+
+```go
+stats := client.Stats()
+fmt.Printf("runs: %d, succeeded: %d, failed: %d, total attempts: %d\n",
+    stats.TotalRuns, stats.Successes, stats.Failures, stats.TotalAttempts)
+
+// Reset before the next reporting window
+client.ResetStats()
+```
+
 ## Generic Value-Returning Operations
 
 Use `DoWithValue[T]` for operations that return values:
@@ -218,6 +292,8 @@ if again.IsRetryError(err) {
 The `examples/` directory contains comprehensive demonstrations:
 
 - **[examples/basic](examples/basic/main.go)**: Core framework features and patterns
+- **[examples/client](examples/client/main.go)**: `RetryClient` usage — shared clients,
+  derived clients, stats monitoring
 - **[examples/http](examples/http/main.go)**: HTTP client retry scenarios
 - **[examples/database](examples/database/main.go)**: Database connection and transaction retries
 
@@ -225,6 +301,7 @@ Run examples:
 
 ```bash
 go run examples/basic/main.go
+go run examples/client/main.go
 go run examples/http/main.go
 go run examples/database/main.go
 ```
